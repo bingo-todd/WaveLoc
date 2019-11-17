@@ -1,0 +1,55 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mtick
+import configparser
+import os
+import WavLoc
+
+
+
+def model_test_mct(model_dir_base,record_set_dir):
+    room_list = ['A','B','C','D']
+    N_room = len(room_list)
+
+    rmse_mct = np.zeros(N_room) # co-normalize
+
+    for i in range(N_room):
+        config_fpath = os.path.join(model_dir_base,
+                                    'mct_not_{}/'.format(room_list[i]),
+                                    'mct_{}.cfg'.format(room_list[i]))
+        model = WavLoc.WavLoc(config_fpath=config_fpath,
+                              is_load_model=True,
+                              gpu_index=1)
+        rmse_mct[i] = model.evaluate_chunk(os.path.join(record_set_dir,
+                                                        room_list[i]))
+    return rmse_mct
+
+
+if __name__ == "__main__":
+
+    model_dir_base = 'models'
+    n_room = 4
+    room_list = ['A','B','C','D']
+    n_test = 4
+
+    rmse_multi_test = np.zeros((n_test,n_room))
+    for i in range(n_test):
+        rmse_multi_test[i] = model_test_mct(model_dir_base=model_dir_base,
+                                            record_set_dir='../Data/Record_v{}/test/'.format(i+1))
+
+    print(rmse_multi_test)
+    rmse_fpath = os.path.join(model_dir_base,'rmse_multi_test')
+    np.save(rmse_fpath,rmse_multi_test)
+
+    fig,ax = plt.subplots(1,1)
+    width=0.2
+    ax.bar(np.arange(4),np.mean(rmse_multi_test,axis=0),
+             yerr=np.std(rmse_multi_test,axis=0),
+             width=width,linewidth=2)
+    ax.set_xticks(range(4))
+    ax.set_xticklabels(room_list)
+    ax.set_ylabel('RME(^o)')
+    ax.set_ylim([0,4])
+    # plt.savefig(os.path.join(result_dir,'models_result.png'))
+    fig_fpath = os.path.join(model_dir_base,'multi_test.png')
+    fig.savefig(fig_fpath)

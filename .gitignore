@@ -1,0 +1,5 @@
+models/
+models_valid/
+__pycache__/
+.trash/
+pre_result
