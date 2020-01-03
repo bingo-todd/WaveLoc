@@ -1,136 +1,103 @@
-·<!-- TOC -->
+# End2End sound localization model
 
-- [分带](#%E5%88%86%E5%B8%A6)
-- [Gammatone 滤波器长度](#gammatone-%E6%BB%A4%E6%B3%A2%E5%99%A8%E9%95%BF%E5%BA%A6)
+Reference:
 
-<!-- /TOC -->
+  P. Vecchiotti, N. Ma, S. Squartini, and G. J. Brown, “END-TO-END BINAURAL SOUND LOCALISATION FROM THE RAW WAVEFORM,” in 2019 IEEE INTERNATIONAL CONFERENCE ON ACOUSTICS, SPEECH AND SIGNAL PROCESSING (ICASSP), 345 E 47TH ST, NEW YORK, NY 10017 USA, 2019, pp. 451–455.
 
-## 分带
-> a gammatone filter bank, which consists of 32 filters spanning between 70 and 7000 Hz
-with peak gain set to 0 dB.
+**Only WaveLoc-GTF is implemented**
 
-细节问题，文中给出的频率范围，70～7000Hz，是中心频率的范围、还是通带的频率范围？
+## Model
+<img src='images/end2end-model-framework.png' width=80%>
 
-<table>
-<tr>
-<td>CF_low=70</br>CF_high=7e3</td>
-<td><img src='images/freq_low70_CF_high7e3.png'></td>
-<tr>
-<!-- <tr>
-<td>freq_low=70</br>CF_high=7e3</td>
-<td><img src='images/freq_low70_CF_high7e3.png'></td>
-<tr>
-<td>CF_low=70</br>freq_high=7e3</td>
-<td><img src='images/cf_low70_freq_high7e3.png'></td>
-<tr> -->
-<td>freq_low=70</br>freq_high=7e3</td>
-<td><img src='images/freq_low70_freq_high7e3.png'></td>
-</tr>
+## Traning
+### Dataset
+- BRIR
+
+  Surrey binaural room impulse response (BRIR) database, including anechoic room and 4 reverberation room.
+
+  <img src='images/rt-of-brir-dataset.png' width=50%>
+
+- Sound source
+
+  TIMIT database
+
+  Sentences per azimuth
+  <table style='text-align:center'>
+  <col width=15%>
+  <col width=15%>
+  <col width=15%>
+    <tr>
+      <td>Train</td> <td>Validate</td> <td>Evaluate</td>
+    </tr>
+    <tr>
+      <td>24</td> <td>6</td> <td>15</td>
+    </tr>
+  </table>
+
+
+### Traning strategies
+
+1. Multi-conditional training(MCT)
+
+    Each time, 1 reverberant room is selected for evaluate, while the rest(anechoic room and 3 reverberant rooms) are used for model training
+
+    Training curves
+    <div align=center>
+    <img src='images/train/mct_train_curve.png' width=60%>
+    </div>
+
+2. All-conditional traning(ACT)
+
+  All rooms are used both for training and evaluation.
+  <div align=center>
+  <img src='images/train/act_train_curve.png' width=60%>
+  </div>
+
+
+## Evaluation
+Root mean square error(RMSE) is used as the measurement of performance.
+
+For datasets synthesized in the same way, trained model performs a little different. RMSE averaged over three runs of evaluation is given.(**not in paper.**).
+
+### My result vs. paper
+<table style='text-align:center'>
+<col width=30%>
+<col width=15%>
+<col width=15%>
+<col width=15%>
+<col width=15%>
+  <tr>
+    <th>Reverberant room</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th>
+   </tr>
+   <tr>
+   <th>My result</th> <td>1.13</td> <td>1.64</td> <td>1.17</td> <td>2.63</td>
+   </tr>
+   <tr>
+   <th>Result in paper</th> <td>1.5</td> <td>3.0</td> <td>1.7</td> <td>3.5</td>
+   </tr>
 </table>
 
-**之前的实验，将滤波器的中心频率设置为[70,7000)**
 
-## Gammatone 滤波器长度
+Comparasion between different training strategies
 
-  <img src='images/gammatone_kernel.png'>
-
-```
-  <table>
-  <tr> <td>  </td > <td align=center> no padd </td> <td align=center> padd </td> </tr>
+<table style='text-align:center'>
+<col width=30%>
+<col width=15%>
+<col width=15%>
+<col width=15%>
+<col width=15%>
   <tr>
-  <td>  </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd/gtf_kernel_in_net.png'> </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_padd/gtf_kernel_in_net.png'> </td>
-  </tr>
-```
-
-  <tr>
-  <td>  </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd/layer1_norm_output.png'> </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_padd/layer1_norm_output.png'> </td>
-  </tr>
-  </table>
-
-
-  <table>
-  <tr> <td>  </td > <td align=center> no aligned </td> <td align=center> aligned </td> </tr>
-  <tr>
-  <td>  </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd_gtf/gtf_kernel_in_net.png'> </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd_gtf_align/gtf_kernel_in_net.png'> </td>
-  </tr>
-
-  <tr>
-  <td>  </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd_gtf/layer1_norm_output.png'> </td>
-  <td> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd_gtf_align/layer1_norm_output.png'> </td>
-  </tr>
-  </table>
-
-  <!-- <center> <img src='pre_exps/images/kernel_test/gtf_kernel_no_padd_gtf/input.png'> </center> -->
-
-
-## 结果
-### 历史结果
-
-<!-- <img src='images/k320_result.png'>
-<img src='images/k320_320_result.png'>
-<img src='images/k640_640_result.png'>
-<img src='images/k960_960_result.png'> -->
-
-<table>
-<tr>
-<td>
-<img src='images/all_model_result.png'>
-</td>
-<td>
-<img src='../baseline_v7/images/multi_test_errorbar.png'>
-</td>
-</tr>
+    <th>Reverberant room</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th>
+   </tr>
+   <tr>
+   <th>MCT</th> <td>1.13</td> <td>1.64</td> <td>1.17</td> <td>2.63</td>
+   </tr>
+   <tr>
+   <th>ACT</th> <td>0.46</td> <td>0.77</td> <td>0.30</td> <td>1.68</td>
+   </tr>
 </table>
 
-Room B 的结果还是有点问题，重新跑一次实验
 
-
-### 新跑的实验
-
-  训练
-
-
-  设置与论文一致
-
-  <table>
-    <tr>
-      <td> train set </td> <td> <img src='images/basic_model_train_record_multi_run_train.png'></td>
-    </tr>
-    <tr>
-     <td> Validation set </td>
-     <td> <img src='images/basic_model_train_record_multi_run_valid.png'> </td>
-    </tr>
-    <tr>
-      <td>Evaluation result</td><td>
-        <img src='images/rmse_baic_multi_test.png'></td>
-    </tr>
-  </table>
-
-
-  <!-- <table>
-    <tr align=center>
-        <td> run_0 </td>  <td> run_1 </td> <td> run_2 </td>
-    </tr>
-    <tr>
-        <td> <img src='models/basic_0/rmse_multi_test.png'> </td>
-        <td> <img src='models/basic/rmse_multi_test.png'> </td>
-        <td> <img src='models/basic_2/rmse_multi_test.png'> </td>
-    </tr>
-  </table> -->
-
-
-
- Padding zeros to kernel
- <!-- <table>
- </table > -->
- <img src='models/padd/rmse_multi_test.png'>
-
-
-<!-- <img src='/pre_exps/models/gtf_exp_run2/result/models_result.png'> -->
+ <div align=center>
+ <img src='images/evaluate/rmse_result_all.png' width=80%>
+ </div>
