@@ -74,11 +74,11 @@ class WaveLoc(object):
             if self.valid_set_dir[0] == '':
                 self.valid_set_dir = None
 
-            # print('Train set:')
-            # [print('\t{}'.format(item)) for item in self.train_set_dir]
+            print('Train set:')
+            [print('\t{}'.format(item)) for item in self.train_set_dir]
 
-            # print('Valid set:')
-            # [print('\t{}'.format(item)) for item in self.valid_set_dir]
+            print('Valid set:')
+            [print('\t{}'.format(item)) for item in self.valid_set_dir]
 
         else:
             print(config_fpath)
@@ -437,7 +437,8 @@ class WaveLoc(object):
         rmse_chunk = 0.
         n_chunk = 0
 
-        for x, y in self._file_reader(record_set_dir, is_shuffle=False):
+        for x, y in self._file_reader(record_set_dir, is_shuffle=False,
+                                      **self._reader_args):
             sample_num = x.shape[0]
             azi_true = np.argmax(y[0])
 
