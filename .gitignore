@@ -3,3 +3,5 @@ models_valid/
 __pycache__/
 .trash/
 pre_result
+models
+models_pre/

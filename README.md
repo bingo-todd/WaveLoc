@@ -15,7 +15,17 @@ Reference:
 
   Surrey binaural room impulse response (BRIR) database, including anechoic room and 4 reverberation room.
 
-  <img src='images/rt-of-brir-dataset.png' width=50%>
+  <table style='text-align:center'>
+  <tr>
+    <td>Room</td> <td>A</td> <td>B</td> <td>C</td> <td>D</td>
+  </tr>
+  <tr>
+    <td>RT_60(s)</td> <td>0.32</td> <td>0.47</td> <td>0.68</td> <td>0.89</td>
+  </tr>
+  <tr>
+    <td>DDR(dB)</td> <td>6.09</td> <td>5.31</td> <td>8.82</td> <td>6.12</td>
+  </tr>
+  </table>
 
 - Sound source
 
@@ -35,29 +45,21 @@ Reference:
   </table>
 
 
-### Traning strategies
+## Multi-conditional training(MCT)
 
-1. Multi-conditional training(MCT)
+  For
+  For each reverberant room, the rest 3 reverberant rooms and anechoic room are used for training
 
-    Each time, 1 reverberant room is selected for evaluate, while the rest(anechoic room and 3 reverberant rooms) are used for model training
-
-    Training curves
-    <div align=center>
-    <img src='images/train/mct_train_curve.png' width=60%>
-    </div>
-
-2. All-conditional traning(ACT)
-
-  All rooms are used both for training and evaluation.
+  Training curves
   <div align=center>
-  <img src='images/train/act_train_curve.png' width=60%>
+  <img src='images/learning_curve_all.png' width=80%>
   </div>
 
 
 ## Evaluation
-Root mean square error(RMSE) is used as the measurement of performance.
+Root mean square error(RMSE) is used as the metrics of performance. For each reverberant room, the evaluation was performed 3 times to get more stable results and the test dataset was regenerated each time.
 
-For datasets synthesized in the same way, trained model performs a little different. RMSE averaged over three runs of evaluation is given.(**not in paper.**).
+Since binaural sound is directly fed to models without extra preprocess and there may be short pulses in speech, the localization result was reported based on chunks rather than frames. Each chunk consisted of 25 consecutive frames.
 
 ### My result vs. paper
 <table style='text-align:center'>
@@ -70,34 +72,14 @@ For datasets synthesized in the same way, trained model performs a little differ
     <th>Reverberant room</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th>
    </tr>
    <tr>
-   <th>My result</th> <td>1.13</td> <td>1.64</td> <td>1.17</td> <td>2.63</td>
+   <th>My result</th> <td>1.5</td> <td>2.0</td> <td>1.4</td> <td>2.7</td>
    </tr>
    <tr>
    <th>Result in paper</th> <td>1.5</td> <td>3.0</td> <td>1.7</td> <td>3.5</td>
    </tr>
 </table>
 
-
-Comparasion between different training strategies
-
-<table style='text-align:center'>
-<col width=30%>
-<col width=15%>
-<col width=15%>
-<col width=15%>
-<col width=15%>
-  <tr>
-    <th>Reverberant room</th> <th>A</th> <th>B</th> <th>C</th> <th>D</th>
-   </tr>
-   <tr>
-   <th>MCT</th> <td>1.13</td> <td>1.64</td> <td>1.17</td> <td>2.63</td>
-   </tr>
-   <tr>
-   <th>ACT</th> <td>0.46</td> <td>0.77</td> <td>0.30</td> <td>1.68</td>
-   </tr>
-</table>
-
-
- <div align=center>
- <img src='images/evaluate/rmse_result_all.png' width=80%>
- </div>
+## Main dependencies
+  - tensorflow-1.14
+  - pysofa (can be installed by pip)
+  - BasicTools (in my other [repository](https://github.com/bingo-todd/BasicTools))

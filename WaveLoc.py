@@ -2,41 +2,29 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import sys
 import configparser
 import time
 import gammatone.filters as gt_filters
 import tensorflow as tf
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-tf.compat.v1.logging.set_verbosity(tf.compat.v1.logging.ERROR)
-#
-my_modules_dir = os.path.expanduser('~/my_modules')
-sys.path.append(os.path.join(my_modules_dir, 'basic_tools/basic_tools'))
-import wav_tools  # noqa:402
-import TFData  # noqa:402
-from get_fpath import get_fpath  # noqa:402
 
-sys.path.append(os.path.join(my_modules_dir, 'GTF'))
-from GTF import GTF  # noqa:402
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class WaveLoc(object):
     """
     """
-    def __init__(self, file_reader, reader_args={}, config_fpath=None,
-                 gpu_index=0):
+    def __init__(self, file_reader, config_fpath=None, gpu_index=0):
         """
         """
 
         # constant settings
         self.epsilon = 1e-20
         self._file_reader = file_reader
-        self._reader_args = reader_args
 
         self._graph = tf.Graph()
         config = tf.compat.v1.ConfigProto()
         config.gpu_options.allow_growth = True
-        config.gpu_options.visible_device_list = '{}'.format(gpu_index)
+        # config.gpu_options.visible_device_list = '{}'.format(gpu_index)
         self._sess = tf.compat.v1.Session(graph=self._graph, config=config)
 
         self._load_cfg(config_fpath)
@@ -113,12 +101,6 @@ class WaveLoc(object):
                                     axis=0)
         else:
             kernel = irs_gain_norm
-
-        # fig = plt.figure()
-        # axes = fig.subplots(1,2)
-        # axes[0].plot(irs)
-        # axes[1].plot(kernel)
-        # fig.savefig('irs.png')
         return kernel
 
     def _fcn_layers(self, input, *layers_setting):
@@ -177,7 +159,7 @@ class WaveLoc(object):
                                          dtype=tf.float32,
                                          name='x')  #
 
-            layer1_conv = tf.keras.layers.Conv2D(
+            gt_layer = tf.keras.layers.Conv2D(
                                         filters=self.n_band,
                                         kernel_size=[gtf_kernel_len, 1],
                                         strides=[1, 1],
@@ -186,43 +168,44 @@ class WaveLoc(object):
                                         trainable=False, use_bias=False)
 
             # add to model for test
-            self.layer1_conv = layer1_conv
+            # self.layer1_conv = gt_layer
 
             # amplitude normalization across frequency channs
             # problem: silence ?
-            layer1_conv_output = layer1_conv(x)
+            x_band_all = gt_layer(x)
             amp_max = tf.reduce_max(
                         tf.reduce_max(
                             tf.reduce_max(
-                                tf.abs(layer1_conv_output),
+                                tf.abs(x_band_all),
                                 axis=1, keepdims=True),
                             axis=2, keepdims=True),
                         axis=3, keepdims=True)
-            layer1_conv_output_norm = tf.divide(layer1_conv_output, amp_max)
+            x_band_norm_all = tf.divide(x_band_all, amp_max)
 
             # layer1_pool
-            layer1_pool = tf.keras.layers.MaxPool2D([2, 1], [2, 1])
-            layer1_output = layer1_pool(layer1_conv_output_norm)
+            gt_layer_pool = tf.keras.layers.MaxPool2D([2, 1], [2, 1])
+            gt_layer_output = gt_layer_pool(x_band_norm_all)
 
             band_out_list = []
             for band_i in range(self.n_band):
                 band_output = self._build_model_subband(
-                                tf.expand_dims(layer1_output[:, :, :, band_i],
-                                               axis=-1))
+                                tf.expand_dims(
+                                    gt_layer_output[:, :, :, band_i],
+                                    axis=-1))
                 band_out_list.append(band_output)
             band_out = tf.concat(band_out_list, axis=1)
 
-            layer1 = {'fcn_size': 1024,
+            layer4 = {'fcn_size': 1024,
                       'activation': tf.nn.relu,
                       'rate': 0.5}
-            layer2 = {'fcn_size': 1024,
+            layer5 = {'fcn_size': 1024,
                       'activation': tf.nn.relu,
                       'rate': 0.5}
             output_layer = {'fcn_size': self.n_azi,
                             'activation': tf.nn.softmax,
                             'rate': 0}
 
-            y_est = self._fcn_layers(band_out, layer1, layer2, output_layer)
+            y_est = self._fcn_layers(band_out, layer4, layer5, output_layer)
 
             # groundtruth of two tasks
             y = tf.compat.v1.placeholder(shape=[None, self.n_azi],
@@ -336,8 +319,8 @@ class WaveLoc(object):
             for epoch in range(last_epoch+1, self.max_epoch):
                 t_start = time.time()
                 print(f'epoch {epoch}')
-                for x, y in self._file_reader(self.train_set_dir,
-                                              **self._reader_args):
+                batch_generator = self._file_reader(self.train_set_dir)
+                for x, y in batch_generator:
                     self._sess.run(self._opt_step,
                                    feed_dict={self._x: x,
                                               self._y: y,
@@ -412,7 +395,8 @@ class WaveLoc(object):
         cost_all = 0.
         rmse_all = 0.
         n_sample_all = 0
-        for x, y in self._file_reader(set_dir, is_shuffle=False):
+        batch_generator = self._file_reader(set_dir)
+        for x, y in batch_generator:
             n_sample_tmp = x.shape[0]
             [cost_tmp, rmse_tmp] = self._sess.run([self._cost, self._azi_rmse],
                                                   feed_dict={self._x: x,
@@ -437,8 +421,7 @@ class WaveLoc(object):
         rmse_chunk = 0.
         n_chunk = 0
 
-        for x, y in self._file_reader(record_set_dir, is_shuffle=False,
-                                      **self._reader_args):
+        for x, y in self._file_reader(record_set_dir, is_shuffle=False):
             sample_num = x.shape[0]
             azi_true = np.argmax(y[0])
 
