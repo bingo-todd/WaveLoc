@@ -9,7 +9,7 @@ Reference:
 ## Model
 <img src='images/end2end-model-framework.png' width=80%>
 
-## Traning
+## Training
 ### Dataset
 - BRIR
 
